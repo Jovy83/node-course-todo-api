@@ -23,6 +23,7 @@ app.post('/todos', (req, res) => {
     // create new Todo object based on what we received from the client 
     var todo = new Todo({
         text: req.body.text
+        //completed: req.body.completed // this is optional if you want to be able to set the completed from the client
     });
     // save it to our db
     todo.save().then((doc) => {
