@@ -33,6 +33,22 @@ app.post('/todos', (req, res) => {
     })
 });
 
+app.get('/todos', (req, res) => {
+    Todo.find({}).then((todos) => {
+        //res.send(todos); // passing the todos as an array like this is not the best way to get the job done. When you pass back an array, you're limiting your options. If you want to add another property likea  status code, you can't because you have an array. 
+
+        // the better solution would be to create an object with the todos property that contains the array. this would let you add other properties such as status codes, later on. 
+        res.send({
+            todos,
+            code: "some status code test"
+        });
+
+    }, (err) => {
+        res.status(400).send(err);
+    });
+});
+
+
 // GET from /todos to get all todos
 // or
 // /todos/someID to get a specific TODO
