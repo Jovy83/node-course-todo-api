@@ -18,7 +18,7 @@ app.use(bodyParser.json()); // now we can send JSON data to our express app
 // standard setup of POSTing todos and GETting todos 
 app.post('/todos', (req, res) => {
 
-    console.log(req.body); // should print whatever we send from the client 
+    //console.log(req.body); // should print whatever we send from the client 
 
     // create new Todo object based on what we received from the client 
     var todo = new Todo({
