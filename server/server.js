@@ -1,5 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const {ObjectID} = require('mongodb'); // we need the id validator from mongodb
 
 const {mongoose} = require('./db/mongoose'); // remember es6 destructuring
 const {Todo} = require('./models/todo');
@@ -48,14 +49,30 @@ app.get('/todos', (req, res) => {
     });
 });
 
-
 // GET from /todos to get all todos
 // or
 // /todos/someID to get a specific TODO
+
+app.get('/todos/:id', (req, res) => {
+    const id = req.params.id; //req.params = object that holds the parameters passed in by the client
+    if (!ObjectID.isValid(id)) {
+        return res.status(404).send(); // send 404 not found and empty body
+    }
+    Todo.findById(id).then((todo) => {
+        if (!todo) {
+            return res.status(404).send(); // send 404 not found and empty body
+        }
+        // success case, id is valid and is existing in the db 
+        res.status(200).send({todo}); // return the found todo not as the main body, but in an object so that we have more flexibility when we want to add addtional properties in the future. 
+    }).catch((err) => {
+        res.status(500).send(); // return 500 because reaching here is a server-side error, not client-side 
+    });
+
+})
 
 app.listen(3000, () => {
     console.log('Server started on port 3000');
 })
 
 // export the app so we can access it in server.test.js
-module.exports = {app};
+module.exports = { app };
