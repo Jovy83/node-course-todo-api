@@ -1,12 +1,13 @@
 // mocha and nodemon are not required to import. that's now how they are use if you can recall
 const expect = require('expect');
 const request = require('supertest');
+const {ObjectID} = require('mongodb');
 
 const {app} = require('./../server');
 const {Todo} = require('./../models/todo');
 
 // some dummy todo objects 
-const todos = [{ text: "First test todo" }, { text: "Second test todo" }];
+const todos = [{ _id: new ObjectID(), text: "First test todo" }, { _id: new ObjectID(), text: "Second test todo" }];
 
 // this runs BEFORE EVERY TEST CASE. So basically we delete eveyrthing in the collection to get a clean slate then we insert our dummy todo objects for testing 
 beforeEach((done) => {
@@ -69,5 +70,32 @@ describe('GET /todos', () => {
                 expect(res.body.todos.length).toBe(2);
             })
             .end(done); // no need to add a function to end like above with POST/todo tests. This is because we don't have to do anything more. We already GOT the data we need to verify. As opposed to above, we POSTED data, then we still needed to retrieve data from the db to verify if the data is correct. Here, we just do a GET request to get all the data from the db and verify if it's correct.
-    })
+    });
+});
+
+describe('GET /todos/:id', () => {
+    it('should return todo doc', (done) => {
+        request(app)
+            .get(`/todos/${todos[0]._id.toHexString()}`) // convert the object id to a string using toHexString()
+            .expect(200)
+            .expect((res) => {
+                expect(res.body.todo.text).toBe(todos[0].text);
+            })
+            .end(done);
+    });
+
+    it('should return 404 if todo not found', (done) => {
+        const id = new ObjectID();
+        request(app)
+            .get(`/todos/${id.toHexString()}`)
+            .expect(404)
+            .end(done);
+    });
+
+    it('should return 404 for invalid object IDs', (done) => {
+        request(app)
+            .get('/todos/123')
+            .expect(404)
+            .end(done);
+    });
 });
