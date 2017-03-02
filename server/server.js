@@ -30,8 +30,8 @@ app.post('/todos', (req, res) => {
         //completed: req.body.completed // this is optional if you want to be able to set the completed from the client
     });
     // save it to our db
-    todo.save().then((doc) => {
-        res.send(doc);
+    todo.save().then((todo) => {
+        res.send({todo});
     }, (err) => {
         res.status(400).send(err); // 400 means bad request. this means that the client provided invalid JSON to create a Todo object such as not entering a text property at all, etc. 
     })

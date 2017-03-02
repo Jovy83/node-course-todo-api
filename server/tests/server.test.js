@@ -27,7 +27,7 @@ describe('POST /todos', () => {
             .send({ text }) // this object will be converted from object to JSON by supertest automatically
             .expect(200)
             .expect((response) => {
-                expect(response.body.text).toBe(text);
+                expect(response.body.todo.text).toBe(text);
             })
             .end((err, response) => { // end the post request here but we're not passing done like we did in the previous lectures since we're not yet finished. we will pass in a func because we need to verify what got stored in our mongodb collection
                 if (err) {
@@ -95,6 +95,44 @@ describe('GET /todos/:id', () => {
     it('should return 404 for invalid object IDs', (done) => {
         request(app)
             .get('/todos/123')
+            .expect(404)
+            .end(done);
+    });
+});
+
+describe('DELETE /todos/:id', () => {
+    it('should remove a todo', (done) => {
+        const id = todos[0]._id.toHexString();
+        request(app)
+            .delete(`/todos/${id}`)
+            .expect(200)
+            .expect((res) => {
+                expect(res.body.todo._id).toBe(id);
+            })
+            .end((err, res) => {
+                if (err) {
+                    return done(err);
+                }
+
+                // query db using findByID to verify if the todo did indeed get deleted
+                Todo.findById(id).then((todo) => {
+                    expect(todo).toNotExist();
+                    done();
+                }).catch((err) => done(err));
+            });
+    });
+
+    it('should return 404 if todo not found', (done) => {
+        const id = new ObjectID();
+        request(app)
+            .delete(`/todos/${id.toHexString()}`)
+            .expect(404)
+            .end(done);
+    });
+
+    it('should return 404 for invalid object IDs', (done) => {
+        request(app)
+            .delete('/todos/123')
             .expect(404)
             .end(done);
     });
