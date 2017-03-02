@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const {ObjectID} = require('mongodb'); // we need the id validator from mongodb
+const _ = require('lodash'); // lodash is usually declared as _
 
 const {mongoose} = require('./db/mongoose'); // remember es6 destructuring
 const {Todo} = require('./models/todo');
@@ -31,7 +32,7 @@ app.post('/todos', (req, res) => {
     });
     // save it to our db
     todo.save().then((todo) => {
-        res.send({todo});
+        res.send({ todo });
     }, (err) => {
         res.status(400).send(err); // 400 means bad request. this means that the client provided invalid JSON to create a Todo object such as not entering a text property at all, etc. 
     })
@@ -66,7 +67,7 @@ app.get('/todos/:id', (req, res) => {
             return res.status(404).send(); // send 404 not found and empty body
         }
         // success case, id is valid and is existing in the db 
-        res.status(200).send({todo}); // return the found todo not as the main body, but in an object so that we have more flexibility when we want to add addtional properties in the future. 
+        res.status(200).send({ todo }); // return the found todo not as the main body, but in an object so that we have more flexibility when we want to add addtional properties in the future. 
     }).catch((err) => {
         res.status(500).send(); // return 500 because reaching here is a server-side error, not client-side 
     });
@@ -74,19 +75,54 @@ app.get('/todos/:id', (req, res) => {
 
 // route to delete a todo doc 
 app.delete('/todos/:id', (req, res) => {
-    const id = req.params.id; 
+    const id = req.params.id;
     if (!ObjectID.isValid(id)) {
         return res.status(404).send();
     }
 
     Todo.findByIdAndRemove(id).then((todo) => {
-        if (!todo) { 
+        if (!todo) {
             return res.status(404).send();
         }
-        res.status(200).send({todo});
+        res.status(200).send({ todo });
     }).catch((err) => {
         res.status(500).send();
     });
+});
+
+// patch is what you use when you want to update a resource
+app.patch('/todos/:id', (req, res) => {
+    const id = req.params.id;
+    if (!ObjectID.isValid(id)) {
+        return res.status(404).send();
+    }
+    // lodash utility that only picks certain properties from an object / request 
+    // this is because the client can send a request that can update ANY todo property or create unwanted new properties
+    // we need to limit what the client can do. we only want the client to be able to set the text and the completed properties of todo 
+    var body = _.pick(req.body, ['text', 'completed']); // we only want the client to update the text or completed properties. we don't want them to update the _id, completedAt, or add any new unwanted properties that aren't specified in the mongoose model we created. in this case, this only creates an object with the properties we want
+
+    // if the provided completed is a boolean and it is true
+    if (_.isBoolean(body.completed) && body.completed) {
+        body.completedAt = new Date().getTime(); // returns a JS timestamp. number of milliseconds since midnight of jan1,1970. values > 0 are ms from that moment forward. values < 0 are before that unix epic (1/1/1970)
+    } else {
+        body.completed = false;
+        body.completedAt = null; // when you want to remove a value from the database, simply set the property to null  
+    }
+
+    // make a query to update the db
+    Todo.findByIdAndUpdate(id, {
+        $set: body  // remember to use mongoDB operators when updating docs
+    }, {
+            new: true, // this is similar to the returnOriginal:false flag in the mongodb native driver. it's just called differently in mongoose
+            runValidators: true // set this flag so it runs the validators we set in our mongoose model 
+        }).then((todo) => {
+            if (!todo) {
+                return res.status(404).send();
+            }
+            res.status(200).send({ todo });
+        }).catch((err) => {
+            res.status(500).send();
+        });
 });
 
 app.listen(port, () => {
