@@ -16,9 +16,11 @@ var app = express();
 // middleware to convert JSON that gets sent to the server to an object
 app.use(bodyParser.json()); // now we can send JSON data to our express app
 
-// POST vs GET
+// POST vs GET vs DELETE vs PATCH protocols
 // We use POST whenever we want create a resource. We send that resource as the body.
 // We use GET whenever we want to retrieve something from the server
+// We use DELETE whenever we want to delete something on the server
+// We use PATCH whenever we want to update something on the server
 
 // standard setup of POSTing todos and GETting todos 
 app.post('/todos', (req, res) => {
@@ -99,7 +101,7 @@ app.patch('/todos/:id', (req, res) => {
     // lodash utility that only picks certain properties from an object / request 
     // this is because the client can send a request that can update ANY todo property or create unwanted new properties
     // we need to limit what the client can do. we only want the client to be able to set the text and the completed properties of todo 
-    var body = _.pick(req.body, ['text', 'completed']); // we only want the client to update the text or completed properties. we don't want them to update the _id, completedAt, or add any new unwanted properties that aren't specified in the mongoose model we created. in this case, this only creates an object with the properties we want
+    var body = _.pick(req.body, ['text', 'completed']); // we only want the client to update the text or completed properties. we don't want them to update the _id, completedAt, or add any new unwanted properties that aren't specified in the mongoose model we created. in this case, this only creates an object with the properties we want. but for good practice, we ought to send an error message here if the client provides invalid properties so that they will know that they did a mistake. 
 
     // if the provided completed is a boolean and it is true
     if (_.isBoolean(body.completed) && body.completed) {

@@ -7,7 +7,7 @@ const {app} = require('./../server');
 const {Todo} = require('./../models/todo');
 
 // some dummy todo objects 
-const todos = [{ _id: new ObjectID(), text: "First test todo" }, { _id: new ObjectID(), text: "Second test todo" }];
+const todos = [{ _id: new ObjectID(), text: "First test todo" }, { _id: new ObjectID(), text: "Second test todo", completed: true, completedAt: 333 }];
 
 // this runs BEFORE EVERY TEST CASE. So basically we delete eveyrthing in the collection to get a clean slate then we insert our dummy todo objects for testing 
 beforeEach((done) => {
@@ -134,6 +134,44 @@ describe('DELETE /todos/:id', () => {
         request(app)
             .delete('/todos/123')
             .expect(404)
+            .end(done);
+    });
+});
+
+describe('PATCH /todos/:id', () => {
+    it('should update the todo', (done) => {
+        // grab id of first item
+        const id = todos[0]._id.toHexString();
+        const newText = 'test text';
+        // update text, set completed to true 
+        request(app)
+            .patch(`/todos/${id}`)
+            .send({ text: newText, completed: true })
+            .expect(200)
+            .expect((res) => {
+                // custom assert text is changed, completed is true, completedAt is a number
+                expect(res.body.todo.text).toBe(newText);
+                expect(res.body.todo.completed).toBe(true);
+                expect(res.body.todo.completedAt).toBeA('number');
+            })
+            .end(done);
+    });
+
+    it('should clear completedAt when to is not completed', (done) => {
+        // grab id of second item
+        const id = todos[1]._id.toHexString();
+        const newText = 'test text!!!!!!!';
+        // update text, set completed to false
+        request(app)
+            .patch(`/todos/${id}`)
+            .send({ text: newText, completed: false })
+            .expect(200)
+            .expect((res) => {
+                // text is changed, completed is false, completedAt is null
+                expect(res.body.todo.text).toBe(newText);
+                expect(res.body.todo.completed).toBe(false);
+                expect(res.body.todo.completedAt).toNotExist();
+            })
             .end(done);
     });
 });
