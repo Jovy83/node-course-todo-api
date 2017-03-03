@@ -13,7 +13,7 @@ Todo.remove({}).then((res) => {
 });
 
 // this will also return to you the deleted doc 
-Todo.findOneAndRemove({_id: '123'}).then((todo) => {
+Todo.findOneAndRemove({ _id: '123' }).then((todo) => {
     console.log(todo);
 });
 

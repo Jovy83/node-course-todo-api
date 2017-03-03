@@ -21,7 +21,7 @@ const Todo = mongoose.model('Todo', {
 
 
 // export the model 
-module.exports = {Todo};
+module.exports = { Todo };
 
 
 // // we can now instantiate a new Todo object because of the statement above. 

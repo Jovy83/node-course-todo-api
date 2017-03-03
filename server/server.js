@@ -1,3 +1,5 @@
+require('./config/config'); // no need to store a reference to the config, this would simply run all the code in config.js
+
 const express = require('express');
 const bodyParser = require('body-parser');
 const {ObjectID} = require('mongodb'); // we need the id validator from mongodb
@@ -8,7 +10,8 @@ const {Todo} = require('./models/todo');
 const {User} = require('./models/user');
 
 // port to use for heroku. if ran locally, will use port 3000
-const port = process.env.PORT || 3000;
+//const port = process.env.PORT || 3000;
+const port = process.env.PORT; // this PORT environment var will never be null now because we have set it above for dev and test environments. and heroku sets it automatically for the production environment
 
 // setup our express app 
 var app = express();
