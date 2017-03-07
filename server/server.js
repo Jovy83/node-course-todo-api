@@ -2,12 +2,12 @@ require('./config/config'); // no need to store a reference to the config, this 
 
 const express = require('express');
 const bodyParser = require('body-parser');
-const {ObjectID} = require('mongodb'); // we need the id validator from mongodb
+const { ObjectID } = require('mongodb'); // we need the id validator from mongodb native driver 
 const _ = require('lodash'); // lodash is usually declared as _
 
-const {mongoose} = require('./db/mongoose'); // remember es6 destructuring
-const {Todo} = require('./models/todo');
-const {User} = require('./models/user');
+const { mongoose } = require('./db/mongoose'); // remember es6 destructuring
+const { Todo } = require('./models/todo');
+const { User } = require('./models/user');
 
 // port to use for heroku. if ran locally, will use port 3000
 //const port = process.env.PORT || 3000;
@@ -128,6 +128,26 @@ app.patch('/todos/:id', (req, res) => {
         }).catch((err) => {
             res.status(500).send();
         });
+});
+
+// POST route to create a new User
+app.post('/users', (req, res) => {
+    // check for unwanted data. if so, send an error message to user
+    var unwantedData = _.omit(req.body, ['email', 'password']);
+    if (_.keys(unwantedData).length > 0) {
+        return res.status(400).send({ error: 'You passed in unwanted data' });
+    }
+
+    var newUser = new User(_.pick(req.body, ['email', 'password']));
+
+    newUser.save().then(() => {
+        //res.status(200).send({ user });
+        return newUser.generateAuthToken();
+    }).then((token) => {
+        res.header('x-auth', token).send({ newUser });
+    }).catch((err) => {
+        res.status(500).send({ err });
+    });
 });
 
 app.listen(port, () => {
