@@ -68,6 +68,31 @@ UserSchema.methods.toJSON = function () {
     return _.pick(userObject, ['_id', 'email']); // return only the id and email
 };
 
+// statics instead of instance method
+UserSchema.statics.findByToken = function (token) {
+    var User = this; // this does not refer to the instance, it refers to the model User.
+    var decoded; // set to null by default
+    try {
+        decoded = jwt.verify(token, 'abc123');
+    } catch (e) {
+        // verify throws an error if the verification fails
+        // if it reaches here, return a promise that always fails
+        // return new Promise((resolve, reject) => {
+        //     reject();
+        // });
+        
+        // shorthand
+        return Promise.reject();
+    }
+
+    return User.findOne({
+        _id: decoded._id,
+        'tokens.token': token,
+        'tokens.access': 'auth' // this is how you compare nested properties: by using single quotes
+        // ask why we didn't need to specify the index of the array for tokens. 
+    });
+}
+
 const User = mongoose.model('User', UserSchema);
 
 // export the model 

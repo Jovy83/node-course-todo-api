@@ -8,6 +8,7 @@ const _ = require('lodash'); // lodash is usually declared as _
 const { mongoose } = require('./db/mongoose'); // remember es6 destructuring
 const { Todo } = require('./models/todo');
 const { User } = require('./models/user');
+const { authenticate } = require('./middleware/authenticate');
 
 // port to use for heroku. if ran locally, will use port 3000
 //const port = process.env.PORT || 3000;
@@ -148,6 +149,23 @@ app.post('/users', (req, res) => {
     }).catch((err) => {
         res.status(500).send({ err });
     });
+});
+
+// private route for the user to get their own account. 2nd arg is the middleware we created 
+app.get('/users/me', authenticate, (req, res) => {
+    // const token = req.header('x-auth'); // fetch the x-auth header from the client 
+
+    // User.findByToken(token).then((user) => {
+    //     if (!user) {
+    //         return Promise.reject(); // this makes the code go straight to line 163
+    //     }
+    //     // success
+    //     res.send({ user });
+    // }).catch((err) => {
+    //     res.status(401).send(); // 401 means authentication is required. client did not authenticate correctly
+    // });
+
+    res.send({ user: req.user }); // remember we modifed the request in our authenticate middleware. by this time, the req object already holds the user requested by the client. 
 });
 
 app.listen(port, () => {
