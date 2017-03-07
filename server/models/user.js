@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
+const bcrypt = require('bcryptjs');
 
 // this is what the user model would look like
 // {
@@ -80,7 +81,7 @@ UserSchema.statics.findByToken = function (token) {
         // return new Promise((resolve, reject) => {
         //     reject();
         // });
-        
+
         // shorthand
         return Promise.reject();
     }
@@ -92,6 +93,25 @@ UserSchema.statics.findByToken = function (token) {
         // ask why we didn't need to specify the index of the array for tokens. 
     });
 }
+
+// mongoose middleware that gets called before we save the User model to the db
+UserSchema.pre('save', function (next) {
+    var user = this;
+
+    // there are going to be times where we update the user object without modifying its password. Which means the password has already been hashed before. We don't want to hash a hashed password any further because this would just cause our verification to fail 
+    // we just want to hash the password if it gets modified.
+    if (user.isModified('password')) { // returns true if property is modified, false if otherwise
+        // hash the password here
+        bcrypt.genSalt(10, (err, salt) => {
+            bcrypt.hash(user.password, salt, (err, hash) => {
+                user.password = hash;
+                next();
+            });
+        });
+    } else {
+        next(); // just do nothing and proceed
+    }
+});
 
 const User = mongoose.model('User', UserSchema);
 
