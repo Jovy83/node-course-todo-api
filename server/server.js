@@ -136,6 +136,7 @@ app.post('/users', (req, res) => {
     // check for unwanted data. if so, send an error message to user
     var unwantedData = _.omit(req.body, ['email', 'password']);
     if (_.keys(unwantedData).length > 0) {
+        //console.log(unwantedData);
         return res.status(400).send({ error: 'You passed in unwanted data' });
     }
 
@@ -147,7 +148,7 @@ app.post('/users', (req, res) => {
     }).then((token) => {
         res.header('x-auth', token).send({ newUser });
     }).catch((err) => {
-        res.status(500).send({ err });
+        res.status(400).send({ err }); // 400 is more appropriate since it reaches this catch if we provided invalid emails/pass and duplicate emails. so it's more of a bad request. 
     });
 });
 

@@ -226,21 +226,21 @@ describe('POST /users', () => {
 
     it('should return validation errors if request invalid', (done) => {
         const invalidEmail = 'askjdhf';
-        const invalidPassword = '<6char';
+        const invalidPassword = '<6';
 
         request(app)
             .post('/users')
-            .send({ invalidEmail, invalidPassword })
+            .send({ email: invalidEmail, password: invalidPassword })
             .expect(400)
             .end(done);
     });
 
     it('should not create user if email in use', (done) => {
         const usedEmail = users[0].email;
-        const password = '123gago';
+        const password = 'somevalidpass';
         request(app)
             .post('/users')
-            .send({ usedEmail, password })
+            .send({ email: usedEmail, password: password })
             .expect(400)
             .end(done);
     });
