@@ -1,20 +1,18 @@
 // mocha and nodemon are not required to import. that's now how they are use if you can recall
 const expect = require('expect');
 const request = require('supertest');
-const {ObjectID} = require('mongodb');
+const { ObjectID } = require('mongodb');
 
-const {app} = require('./../server');
-const {Todo} = require('./../models/todo');
+const { app } = require('./../server');
+const { Todo } = require('./../models/todo');
+const { User } = require('./../models/user');
+const { todos, populateTodos, users, populateUsers } = require('./seed/seed');
 
-// some dummy todo objects 
-const todos = [{ _id: new ObjectID(), text: "First test todo" }, { _id: new ObjectID(), text: "Second test todo", completed: true, completedAt: 333 }];
+
 
 // this runs BEFORE EVERY TEST CASE. So basically we delete eveyrthing in the collection to get a clean slate then we insert our dummy todo objects for testing 
-beforeEach((done) => {
-    Todo.remove({}).then(() => {
-        return Todo.insertMany(todos);
-    }).then(() => done());
-});
+beforeEach(populateTodos);
+beforeEach(populateUsers);
 
 describe('POST /todos', () => {
     it('should create a new Todo', (done) => {
@@ -172,6 +170,78 @@ describe('PATCH /todos/:id', () => {
                 expect(res.body.todo.completed).toBe(false);
                 expect(res.body.todo.completedAt).toNotExist();
             })
+            .end(done);
+    });
+});
+
+describe('GET /users/me', () => {
+    it('should return user if authenticated', (done) => {
+        request(app)
+            .get('/users/me')
+            .set('x-auth', users[0].tokens[0].token) // set a header here;
+            .expect(200)
+            .expect((res) => {
+                expect(res.body.user._id).toBe(users[0]._id.toHexString());
+                expect(res.body.user.email).toBe(users[0].email);
+            })
+            .end(done);
+    });
+
+    it('should return 401 if not authenticated', (done) => {
+        request(app)
+            .get('/users/me')
+            .expect(401)
+            .expect((res) => {
+                expect(res.body).toEqual({}); // to equal an empty object 
+            })
+            .end(done);
+    })
+});
+
+describe('POST /users', () => {
+    it('should create a user', (done) => {
+        const email = 'example@example.com';
+        const password = '123gago';
+
+        request(app)
+            .post('/users')
+            .send({ email, password })
+            .expect(200)
+            .expect((res) => {
+                expect(res.headers['x-auth']).toExist(); // we can't use dot notation here because 'x-auth' has a hyphen which doesn't work with dot notations
+                expect(res.body.newUser._id).toExist(); // make sure the user id exist
+                expect(res.body.newUser.email).toBe(email); // make sure the email matches the email we provided
+            })
+            .end((err, res) => {
+                if (err) {
+                    return done(err);
+                }
+                User.findOne({ email }).then((user) => {
+                    expect(user).toExist(); // make sure the user object exists
+                    expect(user.password).toNotBe(password); // make sure the user's password is hashed. 
+                    done();
+                }).catch((err) => done(err));
+            });
+    });
+
+    it('should return validation errors if request invalid', (done) => {
+        const invalidEmail = 'askjdhf';
+        const invalidPassword = '<6char';
+
+        request(app)
+            .post('/users')
+            .send({ invalidEmail, invalidPassword })
+            .expect(400)
+            .end(done);
+    });
+
+    it('should not create user if email in use', (done) => {
+        const usedEmail = users[0].email;
+        const password = '123gago';
+        request(app)
+            .post('/users')
+            .send({ usedEmail, password })
+            .expect(400)
             .end(done);
     });
 });
