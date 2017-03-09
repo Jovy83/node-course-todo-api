@@ -133,10 +133,8 @@ app.patch('/todos/:id', (req, res) => {
 
 // POST route to create a new User
 app.post('/users', (req, res) => {
-    // check for unwanted data. if so, send an error message to user
-    var unwantedData = _.omit(req.body, ['email', 'password']);
-    if (_.keys(unwantedData).length > 0) {
-        //console.log(unwantedData);
+
+    if (hasUnwantedData(req.body)) {
         return res.status(400).send({ error: 'You passed in unwanted data' });
     }
 
@@ -169,9 +167,34 @@ app.get('/users/me', authenticate, (req, res) => {
     res.send({ user: req.user }); // remember we modifed the request in our authenticate middleware. by this time, the req object already holds the user requested by the client. 
 });
 
+app.post('/users/login', (req, res) => {
+    if (hasUnwantedData(req.body)) {
+        return res.status(400).send({ error: 'You passed in unwanted data' });
+    }
+
+    User.findByCredentials(req.body.email, req.body.password).then((user) => { // the user here is what comes from the bcrypt promise in user.js
+
+        // send him a token as well
+        return user.generateAuthToken().then((token) => {
+            res.header('x-auth', token).send({ user });
+        })
+    }).catch((err) => {
+        res.status(400).send({ err });
+    })
+});
+
 app.listen(port, () => {
     console.log(`Server started on port ${port}`);
 })
 
 // export the app so we can access it in server.test.js
 module.exports = { app };
+
+var hasUnwantedData = (data) => {
+    // check for unwanted data. if so, send an error message to user
+    var unwantedData = _.omit(data, ['email', 'password']);
+    if (_.keys(unwantedData).length > 0) {
+        return true;
+    }
+    return false;
+}

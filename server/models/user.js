@@ -57,7 +57,7 @@ UserSchema.methods.generateAuthToken = function () {
 
     // save this user's tokens to the database as well
     return user.save().then(() => {
-        return token; // this is the token const above. 
+        return token; // this is the token const above which will get passed to the caller 
     }); // we basically return a promise to whoever calls this function. that promise will get passed the token from line 58 in its fulfilled handler. Usually we return another promise when chaining promises, but returning a value is completely legal too. 
 };
 
@@ -90,7 +90,7 @@ UserSchema.statics.findByToken = function (token) {
         _id: decoded._id,
         'tokens.token': token,
         'tokens.access': 'auth' // this is how you compare nested properties: by using single quotes
-        // ask why we didn't need to specify the index of the array for tokens. 
+        // ask why we didn't need to specify the index of the array for tokens. done - this is because of the syntax, it basically looks through ALL elements in the array with the filter we provided. 
     });
 }
 
@@ -112,6 +112,25 @@ UserSchema.pre('save', function (next) {
         next(); // just do nothing and proceed
     }
 });
+
+UserSchema.statics.findByCredentials = function (email, password) {
+    var User = this;
+
+    return User.findOne({ email }).then((user) => {
+        if (!user) {
+            return Promise.reject();
+        }
+        return new Promise ((resolve, reject) => {
+            bcrypt.compare(password, user.password, (err, result) => {
+                if (result) {
+                    resolve(user); // this is the user that gets passed to the server.js POST /users/login
+                } else {
+                    reject(); // this triggers the catch block
+                }
+            });
+        });
+    });
+};
 
 const User = mongoose.model('User', UserSchema);
 
