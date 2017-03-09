@@ -132,6 +132,18 @@ UserSchema.statics.findByCredentials = function (email, password) {
     });
 };
 
+UserSchema.methods.removeToken = function(token) {
+    // $pull is a mongodb operator that lets you remove items from an array that match certain criterias
+    var user = this;
+    return user.update({
+        $pull: {
+            tokens: {
+                token: token
+            }
+        }
+    });
+};
+
 const User = mongoose.model('User', UserSchema);
 
 // export the model 

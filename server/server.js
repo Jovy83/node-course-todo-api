@@ -183,6 +183,15 @@ app.post('/users/login', (req, res) => {
     })
 });
 
+app.delete('/users/me/token', authenticate, (req, res) => {
+    // rememeber at this point, we already have the user stored in the req obj thanks to the middleware we set up. 
+    req.user.removeToken(req.token).then(() => {
+        res.status(200).send();
+    }).catch((err) => {
+        res.status(400).send();
+    });
+});
+
 app.listen(port, () => {
     console.log(`Server started on port ${port}`);
 })
