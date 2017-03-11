@@ -15,8 +15,13 @@ const Todo = mongoose.model('Todo', {
     completedAt: {
         type: Number,
         default: null // use null instead of undefined 
+    },
+    // we don't need a 'createdAt' property since mongo already creates that and encodes it in the objectID.
+
+    _creator: { // _ is a naming convention to let it be known that this property will store an objectID
+        type: mongoose.Schema.Types.ObjectId, // set to an ObjectId type
+        required: true
     }
-    // we don't need a 'createdAt' property since mongo already creates that and encodes it in the objectID. 
 });
 
 

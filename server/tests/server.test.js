@@ -22,6 +22,7 @@ describe('POST /todos', () => {
         // make the test request
         request(app)
             .post('/todos')
+            .set('x-auth', users[0].tokens[0].token)
             .send({ text }) // this object will be converted from object to JSON by supertest automatically
             .expect(200)
             .expect((response) => {
@@ -45,6 +46,7 @@ describe('POST /todos', () => {
     it('should not create a Todo with invalid body data', (done) => {
         request(app)
             .post('/todos')
+            .set('x-auth', users[0].tokens[0].token)
             .send({})
             .expect(400)
             .end((err, response) => {
@@ -63,9 +65,10 @@ describe('GET /todos', () => {
     it('should get all todos', (done) => {
         request(app)
             .get('/todos')
+            .set('x-auth', users[0].tokens[0].token)
             .expect(200)
             .expect((res) => {
-                expect(res.body.todos.length).toBe(2);
+                expect(res.body.todos.length).toBe(1); // changed to 1 because only 1 todo is created by user[0] in our test seed. 
             })
             .end(done); // no need to add a function to end like above with POST/todo tests. This is because we don't have to do anything more. We already GOT the data we need to verify. As opposed to above, we POSTED data, then we still needed to retrieve data from the db to verify if the data is correct. Here, we just do a GET request to get all the data from the db and verify if it's correct.
     });
@@ -75,6 +78,7 @@ describe('GET /todos/:id', () => {
     it('should return todo doc', (done) => {
         request(app)
             .get(`/todos/${todos[0]._id.toHexString()}`) // convert the object id to a string using toHexString()
+            .set('x-auth', users[0].tokens[0].token) // EDIT: set the token for authentication
             .expect(200)
             .expect((res) => {
                 expect(res.body.todo.text).toBe(todos[0].text);
@@ -86,6 +90,7 @@ describe('GET /todos/:id', () => {
         const id = new ObjectID();
         request(app)
             .get(`/todos/${id.toHexString()}`)
+            .set('x-auth', users[0].tokens[0].token) // EDIT: set the token for authentication
             .expect(404)
             .end(done);
     });
@@ -93,6 +98,16 @@ describe('GET /todos/:id', () => {
     it('should return 404 for invalid object IDs', (done) => {
         request(app)
             .get('/todos/123')
+            .set('x-auth', users[0].tokens[0].token) // EDIT: set the token for authentication
+            .expect(404)
+            .end(done);
+    });
+
+    // new test case: user1 should not be able to fetch the todos of user2
+    it('should not return todo doc created by other users', (done) => {
+        request(app)
+            .get(`/todos/${todos[1]._id.toHexString()}`) // this is user2's todo being fetched by user1
+            .set('x-auth', users[0].tokens[0].token) // EDIT: set the token for authentication
             .expect(404)
             .end(done);
     });
@@ -103,6 +118,7 @@ describe('DELETE /todos/:id', () => {
         const id = todos[0]._id.toHexString();
         request(app)
             .delete(`/todos/${id}`)
+            .set('x-auth', users[0].tokens[0].token) // EDIT: set the token for authentication
             .expect(200)
             .expect((res) => {
                 expect(res.body.todo._id).toBe(id);
@@ -111,10 +127,28 @@ describe('DELETE /todos/:id', () => {
                 if (err) {
                     return done(err);
                 }
-
                 // query db using findByID to verify if the todo did indeed get deleted
                 Todo.findById(id).then((todo) => {
                     expect(todo).toNotExist();
+                    done();
+                }).catch((err) => done(err));
+            });
+    });
+
+    // new test case, user1 should not be able to delete user2's todos
+    it('should not remove a todo of other users', (done) => {
+        const id = todos[1]._id.toHexString();
+        request(app)
+            .delete(`/todos/${id}`)
+            .set('x-auth', users[0].tokens[0].token) // EDIT: set the token for authentication
+            .expect(404)
+            .end((err, res) => {
+                if (err) {
+                    return done(err);
+                }
+                // query db using findByID to verify if the todo did indeed get deleted
+                Todo.findById(id).then((todo) => {
+                    expect(todo).toExist(); // it will still exist because it won't be deleted since user1 requested the deletion of user2's todo. 
                     done();
                 }).catch((err) => done(err));
             });
@@ -124,6 +158,7 @@ describe('DELETE /todos/:id', () => {
         const id = new ObjectID();
         request(app)
             .delete(`/todos/${id.toHexString()}`)
+            .set('x-auth', users[0].tokens[0].token) // EDIT: set the token for authentication
             .expect(404)
             .end(done);
     });
@@ -131,6 +166,7 @@ describe('DELETE /todos/:id', () => {
     it('should return 404 for invalid object IDs', (done) => {
         request(app)
             .delete('/todos/123')
+            .set('x-auth', users[0].tokens[0].token) // EDIT: set the token for authentication
             .expect(404)
             .end(done);
     });
@@ -144,6 +180,7 @@ describe('PATCH /todos/:id', () => {
         // update text, set completed to true 
         request(app)
             .patch(`/todos/${id}`)
+            .set('x-auth', users[0].tokens[0].token) // EDIT: set the token for authentication
             .send({ text: newText, completed: true })
             .expect(200)
             .expect((res) => {
@@ -155,6 +192,20 @@ describe('PATCH /todos/:id', () => {
             .end(done);
     });
 
+    // new test case. user1 should not be able to update user2's todos
+    it('should not update the todo created by other users', (done) => {
+        // grab id of first item
+        const id = todos[0]._id.toHexString();
+        const newText = 'test text';
+        // update text, set completed to true 
+        request(app)
+            .patch(`/todos/${id}`)
+            .set('x-auth', users[1].tokens[0].token) // EDIT: set the token for authentication
+            .send({ text: newText, completed: true })
+            .expect(404)
+            .end(done);
+    });
+
     it('should clear completedAt when to is not completed', (done) => {
         // grab id of second item
         const id = todos[1]._id.toHexString();
@@ -162,6 +213,7 @@ describe('PATCH /todos/:id', () => {
         // update text, set completed to false
         request(app)
             .patch(`/todos/${id}`)
+            .set('x-auth', users[1].tokens[0].token) // EDIT: set the token for authentication
             .send({ text: newText, completed: false })
             .expect(200)
             .expect((res) => {
@@ -263,7 +315,7 @@ describe('POST /users/login', () => {
                     return done(err);
                 }
                 User.findById(users[1]._id).then((user) => {
-                    expect(user.tokens[0]).toInclude({ // toInclude means it has the propeties supplied
+                    expect(user.tokens[1]).toInclude({ // toInclude means it has the propeties supplied // EDIT: we edited our seed user to have a token already by default, and by loggin in, it would push a new token object. so we need to compare the 2nd element in the tokens array now. 
                         access: 'auth',
                         token: res.header['x-auth']
                     });
@@ -288,7 +340,7 @@ describe('POST /users/login', () => {
                     return done(err);
                 }
                 User.findById(users[1]._id).then((user) => {
-                    expect(user.tokens.length).toBe(0); // tokens array length should be 0 if login failed because we do not send out a token if login failed
+                    expect(user.tokens.length).toBe(1); // tokens array length should be 0 if login failed because we do not send out a token if login failed // EDIT: it should now be 1 because our seed has a default token available already. If login success, it will be 2. If not, it will remain as 1. so it should be 1 because we failed to login in this test case
                     done();
                 }).catch((err) => done(err));
             });

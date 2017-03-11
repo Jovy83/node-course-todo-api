@@ -27,14 +27,15 @@ app.use(bodyParser.json()); // now we can send JSON data to our express app
 // We use PATCH whenever we want to update something on the server
 
 // standard setup of POSTing todos and GETting todos 
-app.post('/todos', (req, res) => {
+app.post('/todos', authenticate, (req, res) => {
 
     //console.log(req.body); // should print whatever we send from the client 
 
     // create new Todo object based on what we received from the client 
     var todo = new Todo({
-        text: req.body.text
+        text: req.body.text,
         //completed: req.body.completed // this is optional if you want to be able to set the completed from the client
+        _creator: req.user._id
     });
     // save it to our db
     todo.save().then((todo) => {
@@ -44,8 +45,8 @@ app.post('/todos', (req, res) => {
     })
 });
 
-app.get('/todos', (req, res) => {
-    Todo.find({}).then((todos) => {
+app.get('/todos', authenticate, (req, res) => {
+    Todo.find({ _creator: req.user._id }).then((todos) => {
         //res.send(todos); // passing the todos as an array like this is not the best way to get the job done. When you pass back an array, you're limiting your options. If you want to add another property likea  status code, you can't because you have an array. 
 
         // the better solution would be to create an object with the todos property that contains the array. this would let you add other properties such as status codes, later on. 
@@ -63,12 +64,12 @@ app.get('/todos', (req, res) => {
 // or
 // /todos/someID to get a specific TODO
 
-app.get('/todos/:id', (req, res) => {
+app.get('/todos/:id', authenticate, (req, res) => {
     const id = req.params.id; //req.params = object that holds the parameters passed in by the client
     if (!ObjectID.isValid(id)) {
         return res.status(404).send(); // send 404 not found and empty body
     }
-    Todo.findById(id).then((todo) => {
+    Todo.findOne({ _id: id, _creator: req.user._id }).then((todo) => { // EDIT: we changed from findById to findOne and supply the id and _creator filters to only show the note to whoever created it. 
         if (!todo) {
             return res.status(404).send(); // send 404 not found and empty body
         }
@@ -80,13 +81,13 @@ app.get('/todos/:id', (req, res) => {
 });
 
 // route to delete a todo doc 
-app.delete('/todos/:id', (req, res) => {
+app.delete('/todos/:id', authenticate, (req, res) => {
     const id = req.params.id;
     if (!ObjectID.isValid(id)) {
         return res.status(404).send();
     }
 
-    Todo.findByIdAndRemove(id).then((todo) => {
+    Todo.findOneAndRemove({ _id: id, _creator: req.user._id }).then((todo) => { // EDIT: we changed from findByIdAndRemove to findOneAndRemove and supply the id and _creator filters to only delete a todo owned by the user only, and not others.
         if (!todo) {
             return res.status(404).send();
         }
@@ -97,7 +98,7 @@ app.delete('/todos/:id', (req, res) => {
 });
 
 // patch is what you use when you want to update a resource
-app.patch('/todos/:id', (req, res) => {
+app.patch('/todos/:id', authenticate, (req, res) => {
     const id = req.params.id;
     if (!ObjectID.isValid(id)) {
         return res.status(404).send();
@@ -115,8 +116,8 @@ app.patch('/todos/:id', (req, res) => {
         body.completedAt = null; // when you want to remove a value from the database, simply set the property to null  
     }
 
-    // make a query to update the db
-    Todo.findByIdAndUpdate(id, {
+    // make a query to update the db... EDIT: CHANGED findByIdAndUpdate to findOneAndUpdate
+    Todo.findOneAndUpdate({ _id: id, _creator: req.user._id }, {
         $set: body  // remember to use mongoDB operators when updating docs
     }, {
             new: true, // this is similar to the returnOriginal:false flag in the mongodb native driver. it's just called differently in mongoose
