@@ -50,7 +50,7 @@ const UserSchema = new mongoose.Schema({
 UserSchema.methods.generateAuthToken = function () {
     const user = this;
     const access = 'auth';
-    const token = jwt.sign({ _id: user._id.toHexString(), access }, 'abc123'); // we will eventually move the secret salt to a config file. 
+    const token = jwt.sign({ _id: user._id.toHexString(), access }, process.env.JWT_SECRET); // we will eventually move the secret salt to a config file. 
 
     // save the access type and token to the user's tokens array
     user.tokens.push({ access, token });
@@ -74,7 +74,7 @@ UserSchema.statics.findByToken = function (token) {
     var User = this; // this does not refer to the instance, it refers to the model User.
     var decoded; // set to null by default
     try {
-        decoded = jwt.verify(token, 'abc123');
+        decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch (e) {
         // verify throws an error if the verification fails
         // if it reaches here, return a promise that always fails
